@@ -1,6 +1,7 @@
 import json
 import tkinter as tk
-from dividend import show_dividend_info
+
+from .dividend import show_dividend_info
 
 def main_app_loop():
     # Create the main Tkinter window
