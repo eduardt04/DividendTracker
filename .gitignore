@@ -1,2 +1,5 @@
 __pycache__/
 code/__pycache__/
+api_key.txt
+database.db
+.vscode/
