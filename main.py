@@ -3,6 +3,7 @@ import sqlite3
 import numpy as np
 import tkinter as tk
 
+from ttkthemes import ThemedStyle
 from code.stock_data import get_stock_data
 from tkinter import ttk, messagebox, simpledialog
 
@@ -205,19 +206,29 @@ if __name__ == "__main__":
     app = tk.Tk()
     app.title("Dividend Tracker")
 
+    # Apply a dark theme
+    style = ThemedStyle(app)
+    style.set_theme("equilux")
+    style.configure("Treeview.Heading", background="#212121", foreground="white")
+    style.configure(
+        "Treeview", background="#323232", foreground="white", fieldbackground="#323232"
+    )
+
     # Configure width and height of the application
     width = json.load(open("design.json"))["width"]
     height = json.load(open("design.json"))["height"]
     app.geometry(f"{width}x{height}")
 
     # Create labels for dividend statistics
-    label_description = tk.Label(app, text="Dividend breakdown", font=("Helvetica", 16))
-    label_yearly_dividends = tk.Label(app, text="")
-    label_monthly_dividends = tk.Label(app, text="")
-    label_weekly_dividends = tk.Label(app, text="")
-    label_daily_dividends = tk.Label(app, text="")
-    label_total_profit = tk.Label(app, text="")
-    label_total_value = tk.Label(app, text="")
+    label_description = tk.Label(
+        app, text="Dividend breakdown", font=("Helvetica", 24, "bold"), fg="white"
+    )
+    label_yearly_dividends = tk.Label(app, text="", font=("Helvetica", 16), fg="white")
+    label_monthly_dividends = tk.Label(app, text="", font=("Helvetica", 16), fg="white")
+    label_weekly_dividends = tk.Label(app, text="", font=("Helvetica", 16), fg="white")
+    label_daily_dividends = tk.Label(app, text="", font=("Helvetica", 16), fg="white")
+    label_total_profit = tk.Label(app, text="", font=("Helvetica", 16), fg="white")
+    label_total_value = tk.Label(app, text="", font=("Helvetica", 16), fg="white")
 
     # Pack them to display in the app
     label_description.pack()
@@ -275,7 +286,7 @@ if __name__ == "__main__":
     table.pack(pady=20)
 
     add_button = tk.Button(
-        app, text="Add new position", command=add_new_position, foreground="black"
+        app, text="Add new position", command=add_new_position, bg="#212121", fg="black"
     )
     add_button.pack()
 
@@ -283,7 +294,8 @@ if __name__ == "__main__":
         app,
         text="Edit selected quantity",
         command=edit_quantity_entry,
-        foreground="black",
+        bg="#212121",
+        fg="black",
     )
     edit_quantity_button.pack()
 
@@ -291,12 +303,17 @@ if __name__ == "__main__":
         app,
         text="Edit selected average open price",
         command=edit_avg_open_entry,
-        foreground="black",
+        bg="#212121",
+        fg="black",
     )
     edit_avg_open_button.pack()
 
     remove_button = tk.Button(
-        app, text="Remove selected position", command=remove_entry, foreground="black"
+        app,
+        text="Remove selected position",
+        command=remove_entry,
+        bg="#212121",
+        fg="black",
     )
     remove_button.pack()
 
