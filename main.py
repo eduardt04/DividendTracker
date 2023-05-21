@@ -3,7 +3,7 @@ import sqlite3
 import numpy as np
 import tkinter as tk
 
-from code.stock_data import Stock
+from code.stock_data import get_stock_data
 from tkinter import ttk, messagebox, simpledialog
 
 
@@ -41,20 +41,12 @@ def add_new_position():
 
     # Check if input was bad
     if input is not None:
-        stock = Stock(input["stock_name"])
-
-        # Check if stock info is available
-        if stock.last_price is None:
-            return
         cursor.execute(
-            "INSERT INTO entries (name, current_price, avg_open, quantity, dividend, last_payment_date) VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO entries (name, quantity, avg_open) VALUES (?, ?, ?)",
             (
                 input["stock_name"],
-                stock.last_price,
-                input["avg_open"],
                 input["quantity"],
-                stock.last_payment_ammount,
-                stock.last_payment_date,
+                input["avg_open"],
             ),
         )
         conn.commit()
@@ -62,8 +54,8 @@ def add_new_position():
         update_statistics()
 
 
-# Edit Entry
-def edit_entry():
+# Edit quantity entry
+def edit_quantity_entry():
     selected_item = table.selection()
     if selected_item:
         quantity = simpledialog.askfloat("Edit Quantity", "Enter the New Quantity:")
@@ -71,6 +63,25 @@ def edit_entry():
             entry_id = table.item(selected_item)["text"]
             cursor.execute(
                 "UPDATE entries SET quantity=? WHERE id=?", (quantity, entry_id)
+            )
+            conn.commit()
+            populate_table()
+            update_statistics()
+    else:
+        messagebox.showinfo("No Selection", "Please select an entry to edit.")
+
+
+# Edit average open entry
+def edit_avg_open_entry():
+    selected_item = table.selection()
+    if selected_item:
+        avg_open = simpledialog.askfloat(
+            "Edit Average Open", "Enter the New Average Open Price:"
+        )
+        if avg_open is not None:
+            entry_id = table.item(selected_item)["text"]
+            cursor.execute(
+                "UPDATE entries SET avg_open=? WHERE id=?", (avg_open, entry_id)
             )
             conn.commit()
             populate_table()
@@ -107,37 +118,62 @@ def populate_table():
 
     # Populate table with data
     for row in rows:
-        row = (
-            row[0],
-            row[1],
-            row[4],
-            row[5],
-            round(row[2], 3),
-            row[3],
-            round((row[2] - row[3]) * row[4], 3),
-            round(row[2] * row[4], 3),
-            row[6],
-        )
-        table.insert("", "end", text=row[0], values=row[1:])
+        output = row
+
+        # Data from the database
+        stock_name = row[1]
+        stock_quantity = row[2]
+        stock_avg_open = row[3]
+
+        # Access stock market data with the API
+        stock_data = get_stock_data(stock_name)
+        if stock_data is not None:
+            stock_price = round(stock_data[0], 3)
+            profit = round((stock_price - stock_avg_open) * stock_quantity, 3)
+            value = round(stock_quantity * stock_price, 3)
+            stock_dividend = round(stock_data[1], 3)
+            stock_div_frequency = stock_data[3]
+            stock_div_last_date = stock_data[2]
+            stock_total_div_yearly = round(
+                (stock_div_frequency * stock_dividend * stock_quantity), 3
+            )
+            output += (
+                stock_price,
+                profit,
+                value,
+                stock_dividend,
+                stock_div_frequency,
+                stock_total_div_yearly,
+                stock_div_last_date,
+            )
+            table.insert("", "end", text=output[0], values=output[1:])
+
+
+def get_column_values(column_index):
+    values = []
+    for item in table.get_children():
+        item_values = table.item(item)["values"]
+        if item_values:
+            column_data = item_values[
+                column_index
+            ]  # Replace 'column_index' with the actual index of the desired column
+            values.append(float(column_data))
+    return values
 
 
 def calculate_yearly_dividends():
-    # Retrieve data from database
-    cursor.execute("SELECT quantity, dividend FROM entries")
-    rows = np.array(cursor.fetchall())
-    try:
-        return np.sum(rows[:, 0] * rows[:, 1]) * 4
-    except:
-        return 0.0
+    data = np.array(get_column_values(8))
+    return np.sum(data)
 
 
 def calculate_total_profit():
-    cursor.execute("SELECT current_price, avg_open, quantity FROM entries")
-    rows = np.array(cursor.fetchall())
-    try:
-        return round(np.sum((rows[:, 0] - rows[:, 1]) * rows[:, 2]), 3)
-    except:
-        return 0.0
+    data = np.array(get_column_values(4))
+    return np.sum(data)
+
+
+def calculate_total_value():
+    data = np.array(get_column_values(5))
+    return round(np.sum(data), 3)
 
 
 def update_statistics():
@@ -147,6 +183,7 @@ def update_statistics():
     label_weekly_dividends.config(text=f"Weekly: {round(yearly_dividends / 52, 3)}")
     label_daily_dividends.config(text=f"Daily: {round(yearly_dividends / 365, 3)}")
     label_total_profit.config(text=f"Total profit: {calculate_total_profit()}")
+    label_total_value.config(text=f"Total value: {calculate_total_value()}")
 
 
 if __name__ == "__main__":
@@ -159,11 +196,8 @@ if __name__ == "__main__":
         "CREATE TABLE IF NOT EXISTS entries (\
             id INTEGER PRIMARY KEY AUTOINCREMENT, \
             name STRING, \
-            current_price REAL, \
-            avg_open REAL, \
             quantity REAL, \
-            dividend FLOAT, \
-            last_payment_date STRING \
+            avg_open REAL\
         )"
     )
 
@@ -183,6 +217,7 @@ if __name__ == "__main__":
     label_weekly_dividends = tk.Label(app, text="")
     label_daily_dividends = tk.Label(app, text="")
     label_total_profit = tk.Label(app, text="")
+    label_total_value = tk.Label(app, text="")
 
     # Pack them to display in the app
     label_description.pack()
@@ -191,7 +226,7 @@ if __name__ == "__main__":
     label_weekly_dividends.pack()
     label_daily_dividends.pack()
     label_total_profit.pack()
-    update_statistics()
+    label_total_value.pack()
 
     # Create Table
     table = ttk.Treeview(
@@ -199,23 +234,27 @@ if __name__ == "__main__":
         columns=(
             "Name",
             "Quantity",
-            "Dividend",
-            "Price",
             "AvgOpen",
+            "Price",
             "Profit",
             "Value",
+            "Dividend",
+            "DividendFrequency",
+            "TotalYear",
             "LastPaymentDate",
         ),
     )
     table.heading("#0", text="ID")
     table.heading("Name", text="Name")
-    table.heading("Price", text="Price")
-    table.heading("AvgOpen", text="Avg. Open")
-    table.heading("Profit", text="Profit")
     table.heading("Quantity", text="Quantity")
-    table.heading("Dividend", text="Dividend")
-    table.heading("LastPaymentDate", text="Last payment date")
+    table.heading("AvgOpen", text="Avg. Open")
+    table.heading("Price", text="Price")
+    table.heading("Profit", text="Profit")
     table.heading("Value", text="Value")
+    table.heading("Dividend", text="Dividend")
+    table.heading("DividendFrequency", text="Frequency")
+    table.heading("TotalYear", text="Yearly divs.")
+    table.heading("LastPaymentDate", text="Last payment date")
 
     # Configure the style for the headings
     style = ttk.Style()
@@ -224,13 +263,15 @@ if __name__ == "__main__":
     # Center the text in the columns
     table.column("#0", anchor="s", width=25)
     table.column("Name", anchor="s", width=75)
-    table.column("Price", anchor="s", width=75)
-    table.column("AvgOpen", anchor="s", width=75)
-    table.column("Profit", anchor="s", width=75)
     table.column("Quantity", anchor="s", width=50)
-    table.column("Dividend", anchor="s", width=75)
-    table.column("LastPaymentDate", anchor="s", width=100)
+    table.column("AvgOpen", anchor="s", width=75)
+    table.column("Price", anchor="s", width=75)
+    table.column("Profit", anchor="s", width=75)
     table.column("Value", anchor="s", width=75)
+    table.column("Dividend", anchor="s", width=75)
+    table.column("DividendFrequency", anchor="s", width=75)
+    table.column("TotalYear", anchor="s", width=75)
+    table.column("LastPaymentDate", anchor="s", width=125)
     table.pack(pady=20)
 
     add_button = tk.Button(
@@ -238,13 +279,21 @@ if __name__ == "__main__":
     )
     add_button.pack()
 
-    edit_button = tk.Button(
+    edit_quantity_button = tk.Button(
         app,
-        text="Edit quantity for selected position",
-        command=edit_entry,
+        text="Edit selected quantity",
+        command=edit_quantity_entry,
         foreground="black",
     )
-    edit_button.pack()
+    edit_quantity_button.pack()
+
+    edit_avg_open_button = tk.Button(
+        app,
+        text="Edit selected average open price",
+        command=edit_avg_open_entry,
+        foreground="black",
+    )
+    edit_avg_open_button.pack()
 
     remove_button = tk.Button(
         app, text="Remove selected position", command=remove_entry, foreground="black"
@@ -253,6 +302,7 @@ if __name__ == "__main__":
 
     # Populate Table
     populate_table()
+    update_statistics()
 
     # Run the Tkinter event loop
     app.mainloop()
