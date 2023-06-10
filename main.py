@@ -134,7 +134,7 @@ def populate_table():
             value = round(stock_quantity * stock_price, 3)
             stock_dividend = round(stock_data[1], 3)
             stock_div_frequency = stock_data[3]
-            stock_div_last_date = stock_data[2]
+            stock_div_next_date = stock_data[2]
             stock_total_div_yearly = round(
                 (stock_div_frequency * stock_dividend * stock_quantity), 3
             )
@@ -145,7 +145,7 @@ def populate_table():
                 stock_dividend,
                 stock_div_frequency,
                 stock_total_div_yearly,
-                stock_div_last_date,
+                stock_div_next_date,
             )
             table.insert("", "end", text=output[0], values=output[1:])
 
@@ -169,7 +169,7 @@ def calculate_yearly_dividends():
 
 def calculate_total_profit():
     data = np.array(get_column_values(4))
-    return np.sum(data)
+    return round(np.sum(data), 3)
 
 
 def calculate_total_value():
@@ -252,7 +252,7 @@ if __name__ == "__main__":
             "Dividend",
             "DividendFrequency",
             "TotalYear",
-            "LastPaymentDate",
+            "EstNextPaymentDate",
         ),
     )
     table.heading("#0", text="ID")
@@ -265,14 +265,14 @@ if __name__ == "__main__":
     table.heading("Dividend", text="Dividend")
     table.heading("DividendFrequency", text="Frequency")
     table.heading("TotalYear", text="Yearly divs.")
-    table.heading("LastPaymentDate", text="Last payment date")
+    table.heading("EstNextPaymentDate", text="Est. next payment date")
 
     # Configure the style for the headings
     style = ttk.Style()
     style.configure("Treeview.Heading", foreground="black")
 
     # Center the text in the columns
-    table.column("#0", anchor="s", width=25)
+    table.column("#0", anchor="s", width=40)
     table.column("Name", anchor="s", width=75)
     table.column("Quantity", anchor="s", width=50)
     table.column("AvgOpen", anchor="s", width=75)
@@ -282,7 +282,7 @@ if __name__ == "__main__":
     table.column("Dividend", anchor="s", width=75)
     table.column("DividendFrequency", anchor="s", width=75)
     table.column("TotalYear", anchor="s", width=75)
-    table.column("LastPaymentDate", anchor="s", width=125)
+    table.column("EstNextPaymentDate", anchor="s", width=125)
     table.pack(pady=20)
 
     add_button = tk.Button(
